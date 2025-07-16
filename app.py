@@ -111,3 +111,16 @@ def manage_equipments():
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
+
+def ensure_tables():
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    try:
+        c.execute("SELECT 1 FROM rental LIMIT 1;")
+    except sqlite3.OperationalError:
+        print("Tabela 'rental' não existe. Criando...")
+        init_db()
+    finally:
+        conn.close()
+
+ensure_tables()
