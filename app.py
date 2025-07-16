@@ -8,7 +8,7 @@ DATABASE = 'db/kingbar.db'
 
 def init_db():
     os.makedirs(os.path.dirname(DATABASE), exist_ok=True)
-conn = sqlite3.connect(DATABASE)
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
     c.execute('''
