@@ -4,10 +4,14 @@ from datetime import datetime
 import os
 
 app = Flask(__name__)
-DATABASE = 'db/kingbar.db'
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_DIR = os.path.join(BASE_DIR, "db")
+os.makedirs(DB_DIR, exist_ok=True)
+DATABASE = os.path.join(DB_DIR, "kingbar.db")
 
 def init_db():
-    os.makedirs(os.path.dirname(DATABASE), exist_ok=True)
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
