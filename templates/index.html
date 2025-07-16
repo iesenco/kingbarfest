@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="btn btn-success mb-3" href="/new">Novo Aluguel</a>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Equipamento</th>
+      <th>Cliente</th>
+      <th>Início</th>
+      <th>Retorno</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for rental in rentals %}
+    <tr>
+      <td>{{ rental[1] }}</td>
+      <td>{{ rental[2] }}</td>
+      <td>{{ rental[3] }}</td>
+      <td>{{ rental[4] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

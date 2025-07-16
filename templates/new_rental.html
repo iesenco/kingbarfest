@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Novo Aluguel</h2>
+<form method="post">
+  <div class="mb-3">
+    <label for="customer" class="form-label">Nome do cliente</label>
+    <input type="text" class="form-control" name="customer" required>
+  </div>
+  <div class="mb-3">
+    <label for="equipment_code" class="form-label">Equipamento</label>
+    <select class="form-select" name="equipment_code" required>
+      {% for code in equipments %}
+      <option value="{{ code }}">{{ code }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="date_start" class="form-label">Data de envio</label>
+    <input type="date" class="form-control" name="date_start" required>
+  </div>
+  <div class="mb-3">
+    <label for="date_end" class="form-label">Data de retorno</label>
+    <input type="date" class="form-control" name="date_end" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Cadastrar</button>
+</form>
+{% endblock %}
