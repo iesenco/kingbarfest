@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Nova Locação - KingBar Fest</title>
+</head>
+<body>
+    <h2>Nova Locação</h2>
+    <form method="POST">
+        <label>Equipamento:</label><br>
+        <select name="equipamento" required>
+            {% for eq in equipamentos %}
+                <option value="{{ eq }}">{{ eq }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <label>Data de Início:</label><br>
+        <input type="date" name="data_inicio" required><br><br>
+
+        <label>Data de Retorno:</label><br>
+        <input type="date" name="data_retorno" required><br><br>
+
+        <button type="submit">Cadastrar</button>
+    </form>
+
+    {% if alerta %}
+        <p style="color: red;">{{ alerta }}</p>
+    {% endif %}
+
+    <br>
+    <a href="{{ url_for('index') }}">Voltar</a>
+</body>
+</html>

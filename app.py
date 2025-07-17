@@ -1,126 +1,105 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import sqlite3
 from datetime import datetime
-import os
 
 app = Flask(__name__)
-import os
+app.secret_key = 'sua_chave_secreta'
+DATABASE = 'banco.db'
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_DIR = os.path.join(BASE_DIR, "db")
-os.makedirs(DB_DIR, exist_ok=True)
-DATABASE = os.path.join(DB_DIR, "kingbar.db")
+USERS = {
+    "Bruno": "Lun@2020",
+    "Juninho": "Lun@2020"
+}
 
-def init_db():
+def get_db_connection():
     conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
+    conn.row_factory = sqlite3.Row
+    return conn
 
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS equipment (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            code TEXT UNIQUE
-        )
-    ''')
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if USERS.get(username) == password:
+            session['username'] = username
+            return redirect(url_for('index'))
+        flash('Usuário ou senha inválidos.')
+    return render_template('login.html')
 
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS rental (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            equipment_code TEXT,
-            customer TEXT,
-            date_start TEXT,
-            date_end TEXT,
-            FOREIGN KEY(equipment_code) REFERENCES equipment(code)
-        )
-    ''')
-
-    for i in range(1, 12):
-        code = f'KBF-{i:03d}'
-        c.execute('INSERT OR IGNORE INTO equipment (code) VALUES (?)', (code,))
-
-    conn.commit()
-    conn.close()
-
-def get_available_equipments(date_start, date_end):
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-    query = '''
-        SELECT code FROM equipment
-        WHERE code NOT IN (
-            SELECT equipment_code FROM rental
-            WHERE NOT (date_end < ? OR date_start > ?)
-        )
-    '''
-    c.execute(query, (date_start, date_end))
-    available = [row[0] for row in c.fetchall()]
-    conn.close()
-    return available
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 @app.route('/')
 def index():
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-    c.execute('SELECT * FROM rental ORDER BY date_start DESC')
-    rentals = c.fetchall()
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    rentals = conn.execute('SELECT * FROM rental ORDER BY date_start DESC').fetchall()
     conn.close()
     return render_template('index.html', rentals=rentals)
 
-@app.route('/new', methods=['GET', 'POST'])
-def new_rental():
+@app.route('/add', methods=['POST'])
+def add():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    equipment = request.form['equipment']
+    date_start = request.form['date_start']
+    date_end = request.form['date_end']
+
+    conn = get_db_connection()
+    existing = conn.execute(
+        'SELECT * FROM rental WHERE equipment = ? AND NOT (date_end < ? OR date_start > ?)',
+        (equipment, date_start, date_end)
+    ).fetchone()
+
+    if existing:
+        flash(f"O equipamento {equipment} já está alugado de {existing['date_start']} a {existing['date_end']}. Por favor, escolha outro equipamento.")
+    else:
+        conn.execute('INSERT INTO rental (equipment, date_start, date_end) VALUES (?, ?, ?)', (equipment, date_start, date_end))
+        conn.commit()
+    conn.close()
+    return redirect(url_for('index'))
+
+@app.route('/edit/<int:rental_id>', methods=['GET', 'POST'])
+def edit(rental_id):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    rental = conn.execute('SELECT * FROM rental WHERE id = ?', (rental_id,)).fetchone()
+
     if request.method == 'POST':
-        customer = request.form['customer']
-        equipment_code = request.form['equipment_code']
+        equipment = request.form['equipment']
         date_start = request.form['date_start']
         date_end = request.form['date_end']
 
-        available = get_available_equipments(date_start, date_end)
-        if equipment_code not in available:
-            return "Erro: Equipamento não disponível nessa data.", 400
+        existing = conn.execute(
+            'SELECT * FROM rental WHERE equipment = ? AND NOT (date_end < ? OR date_start > ?) AND id != ?',
+            (equipment, date_start, date_end, rental_id)
+        ).fetchone()
 
-        conn = sqlite3.connect(DATABASE)
-        c = conn.cursor()
-        c.execute('INSERT INTO rental (equipment_code, customer, date_start, date_end) VALUES (?, ?, ?, ?)',
-                  (equipment_code, customer, date_start, date_end))
-        conn.commit()
-        conn.close()
-        return redirect('/')
-    else:
-        today = datetime.now().date().isoformat()
-        future = today
-        available = get_available_equipments(today, future)
-        return render_template('new_rental.html', equipments=available)
-
-@app.route('/equipamentos', methods=['GET', 'POST'])
-def manage_equipments():
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-
-    if request.method == 'POST':
-        code = request.form['code'].strip().upper()
-        try:
-            c.execute('INSERT INTO equipment (code) VALUES (?)', (code,))
+        if existing:
+            flash(f"O equipamento {equipment} já está alugado de {existing['date_start']} a {existing['date_end']}. Por favor, escolha outro equipamento.")
+        else:
+            conn.execute('UPDATE rental SET equipment = ?, date_start = ?, date_end = ? WHERE id = ?',
+                         (equipment, date_start, date_end, rental_id))
             conn.commit()
-        except sqlite3.IntegrityError:
             conn.close()
-            return "Erro: Código já existente.", 400
-
-    c.execute('SELECT * FROM equipment ORDER BY code')
-    equipments = c.fetchall()
+            return redirect(url_for('index'))
     conn.close()
-    return render_template('equipments.html', equipments=equipments)
+    return render_template('edit.html', rental=rental)
+
+@app.route('/delete/<int:rental_id>')
+def delete(rental_id):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    conn.execute('DELETE FROM rental WHERE id = ?', (rental_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True)
-
-def ensure_tables():
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-    try:
-        c.execute("SELECT 1 FROM rental LIMIT 1;")
-    except sqlite3.OperationalError:
-        print("Tabela 'rental' não existe. Criando...")
-        init_db()
-    finally:
-        conn.close()
-
-ensure_tables()

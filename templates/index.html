@@ -1,24 +1,39 @@
-{% extends "base.html" %}
-{% block content %}
-<a class="btn btn-success mb-3" href="/new">Novo Aluguel</a>
-<table class="table table-striped">
-  <thead>
-    <tr>
-      <th>Equipamento</th>
-      <th>Cliente</th>
-      <th>Início</th>
-      <th>Retorno</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for rental in rentals %}
-    <tr>
-      <td>{{ rental[1] }}</td>
-      <td>{{ rental[2] }}</td>
-      <td>{{ rental[3] }}</td>
-      <td>{{ rental[4] }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Locações - KingBar Fest</title>
+</head>
+<body>
+    <h2>Olá, {{ session['username'] }}!</h2>
+    <p><a href="{{ url_for('logout') }}">Sair</a></p>
+
+    <h3>Aluguéis Cadastrados</h3>
+    <table border="1">
+        <tr>
+            <th>Equipamento</th>
+            <th>Data Início</th>
+            <th>Data Retorno</th>
+            <th>Ações</th>
+        </tr>
+        {% for aluguel in alugueis %}
+        <tr>
+            <td>{{ aluguel[1] }}</td>
+            <td>{{ aluguel[2] }}</td>
+            <td>{{ aluguel[3] }}</td>
+            <td>
+                <a href="{{ url_for('edit', id=aluguel[0]) }}">Editar</a> |
+                <a href="{{ url_for('delete', id=aluguel[0]) }}" onclick="return confirm('Tem certeza que deseja excluir?')">Excluir</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <a href="{{ url_for('add') }}">Cadastrar Novo Aluguel</a>
+
+    {% if alerta %}
+        <p style="color: red;">{{ alerta }}</p>
+    {% endif %}
+</body>
+</html>
